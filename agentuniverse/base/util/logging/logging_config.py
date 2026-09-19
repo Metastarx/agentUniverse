@@ -56,20 +56,29 @@ class LoggingConfig(object):
 
         Args:
             config_path(str):
-                the path of the toml file
+                the path of the toml file, ``None`` or an empty string means
+                the default configuration will be used.
         """
         self.__config = None
+        if not config_path:
+            # ``config_path`` is optional: ``AgentUniverse.start`` passes
+            # ``None`` whenever the main config file does not declare
+            # ``log_config_path``.  Passing the raw value straight to
+            # ``Configer.load_by_path`` used to fail with an opaque
+            # ``AttributeError`` raised by ``str.split``, so fall back to the
+            # documented defaults and disable every extension module instead.
+            print("no log config file specified, use default config")
+            self._disable_extend_modules()
+            return
         try:
             self.__config = Configer().load_by_path(config_path).value['LOG_CONFIG']
         except (FileNotFoundError, TypeError):
             print("can't find log config file, use default config")
-            for log_module in LoggingConfig.log_extend_module_list:
-                LoggingConfig.log_extend_module_switch[log_module] = False
+            self._disable_extend_modules()
             return
         except (tomli.TOMLDecodeError, KeyError):
             print("log config file isn't a valid toml, use default config.")
-            for log_module in LoggingConfig.log_extend_module_list:
-                LoggingConfig.log_extend_module_switch[log_module] = False
+            self._disable_extend_modules()
             return
 
         for log_module in LoggingConfig.log_extend_module_list:
@@ -124,12 +133,26 @@ class LoggingConfig(object):
                 self._get_config_or_default("ALIYUN_SLS_CONFIG",
                                             "sls_log_send_interval"))
 
+    @classmethod
+    def _disable_extend_modules(cls):
+        """Disable every optional log extension module.
+
+        The documented default configuration only covers the built-in stdout
+        and file handlers, therefore every extension module (for example the
+        Aliyun SLS sink) must be switched off explicitly when no usable
+        configuration file is available.  Keeping the switch map in sync with
+        ``log_extend_module_list`` also prevents a stale ``True`` value from a
+        previously loaded config file leaking into the default setup.
+        """
+        for log_module in cls.log_extend_module_list:
+            cls.log_extend_module_switch[log_module] = False
+
     def _get_config_or_default(self, section, key, default_value=None):
         """Get config attribute from toml data, return default_value if no such
         attribute."""
         try:
             return self.__config[section][key]
-        except KeyError:
+        except (KeyError, TypeError):
             return default_value
 
 
