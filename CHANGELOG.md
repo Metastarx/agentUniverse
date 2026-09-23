@@ -35,6 +35,7 @@ Note - Additional remarks regarding the version.
 - Added a batch of new Reader data loading components
   - Added Notion, GoogleDoc, Confluence cloud document loading components
   - Added file format support for epub, rar, sevenzip, zip, xlsx
+  - Added TAR/TGZ file loading component
   - Added text extraction components for images and PDF files based on PaddleOCR
   - Added web page loading components based on playwright and bs4
 - Added GitHub and YouTube retrieval tools

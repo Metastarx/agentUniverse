@@ -35,6 +35,7 @@ Note - 对于版本的额外说明。
 - 新增一批Reader数据加载组件支持
   - 新增Notion、GoogleDoc、Confluence云文档加载组件
   - 新增epub、rar、sevenzip、zip、xlsx等格式文件加载组件
+  - 新增TAR/TGZ格式文件加载组件
   - 新增基于PaddleOCR的图像与pdf文件文字提取组件
   - 新增基于playwright、bs4的网页加载组件
 - 新增github、youtube检索工具

@@ -19,6 +19,7 @@ from agentuniverse.agent.action.knowledge.reader.file.rar_reader import RarReade
 from agentuniverse.agent.action.knowledge.reader.file.xlsx_reader import XlsxReader
 from agentuniverse.agent.action.knowledge.reader.file.zip_reader import ZipReader
 from agentuniverse.agent.action.knowledge.reader.file.sevenzip_reader import SevenZipReader
+from agentuniverse.agent.action.knowledge.reader.file.tar_reader import TarReader
 from agentuniverse.agent.action.knowledge.reader.reader import Reader
 from agentuniverse.agent.action.knowledge.store.document import Document
 
@@ -34,6 +35,11 @@ DEFAULT_FILE_READERS: Dict[str, Type[Reader]] = {
     ".csv": CSVReader,
     ".rar": RarReader,
     ".zip": ZipReader,
+    ".tar": TarReader,
+    ".tgz": TarReader,
+    ".tar.gz": TarReader,
+    ".tar.bz2": TarReader,
+    ".tar.xz": TarReader,
     ".7z": SevenZipReader,
 }
 
@@ -53,7 +59,12 @@ class FileReader(Reader):
     def _load_data(self, file_paths: List[Path], ext_info: Optional[Dict] = None) -> List[Document]:
         document_list = []
         for file_path in file_paths:
-            file_suffix = file_path.suffix.lower()
+            # Compound archive suffixes such as ".tar.gz" have to be matched
+            # first: looking at the plain last suffix alone would resolve
+            # "data.tar.gz" to ".gz" and silently skip the file.
+            file_suffix = "".join(file_path.suffixes[-2:]).lower()
+            if file_suffix not in self.file_readers:
+                file_suffix = file_path.suffix.lower()
             if file_suffix in self.file_readers.keys():
                 file_reader = self.file_readers[file_suffix]()
                 document_list.extend(file_reader.load_data(file=file_path, ext_info=ext_info))

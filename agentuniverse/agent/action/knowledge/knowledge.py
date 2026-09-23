@@ -9,6 +9,7 @@ import os
 import re
 import traceback
 from copy import deepcopy
+from pathlib import Path
 from typing import Optional, Dict, List, Any
 from concurrent.futures import wait, ALL_COMPLETED
 
@@ -118,7 +119,14 @@ class Knowledge(ComponentBase):
         if url_pattern.match(source_path):
             source_type = "url"
         elif os.path.isfile(source_path):
-            source_type = os.path.splitext(source_path)[1][1:]
+            # Compound archive suffixes such as ".tar.gz" have to be resolved
+            # before the plain extension: otherwise "bundle.tar.gz" would be
+            # looked up as "gz" and never reach the TAR reader.
+            compound_suffix = "".join(Path(source_path).suffixes[-2:]).lower().lstrip(".")
+            if compound_suffix in ReaderManager.DEFAULT_READER:
+                source_type = compound_suffix
+            else:
+                source_type = os.path.splitext(source_path)[1][1:]
         else:
             raise Exception(f"Knowledge load data error: Unknown source type:{source_path}")
         if source_type in self.readers:
