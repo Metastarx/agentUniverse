@@ -68,17 +68,17 @@ class LoggingConfig(object):
             # ``AttributeError`` raised by ``str.split``, so fall back to the
             # documented defaults and disable every extension module instead.
             print("no log config file specified, use default config")
-            self._disable_extend_modules()
+            self._reset_to_defaults()
             return
         try:
             self.__config = Configer().load_by_path(config_path).value['LOG_CONFIG']
         except (FileNotFoundError, TypeError):
             print("can't find log config file, use default config")
-            self._disable_extend_modules()
+            self._reset_to_defaults()
             return
         except (tomli.TOMLDecodeError, KeyError):
             print("log config file isn't a valid toml, use default config.")
-            self._disable_extend_modules()
+            self._reset_to_defaults()
             return
 
         for log_module in LoggingConfig.log_extend_module_list:
@@ -133,6 +133,44 @@ class LoggingConfig(object):
                 self._get_config_or_default("ALIYUN_SLS_CONFIG",
                                             "sls_log_send_interval"))
 
+    # Settings that ``__init__`` may overwrite while parsing a config file.
+    # They live on the class, so a fallback has to put every one of them back
+    # to its documented default - resetting only the extension switches would
+    # leak the previous file's log path, level, rotation policy and Aliyun SLS
+    # credentials into the default setup.
+    _MUTABLE_SETTING_NAMES = (
+        "log_level",
+        "log_path",
+        "log_rotation",
+        "log_retention",
+        "log_compression",
+        "sls_endpoint",
+        "sls_project",
+        "sls_log_store",
+        "access_key_id",
+        "access_key_secret",
+        "sls_log_queue_max_size",
+        "sls_log_send_interval",
+    )
+    # Filled in below the class body with a snapshot of the defaults declared
+    # above, so the values are not duplicated in a second place.
+    _CLASS_DEFAULTS: Dict[str, object] = {}
+
+    @classmethod
+    def _reset_to_defaults(cls):
+        """Restore every mutable logging setting to its documented default.
+
+        ``LoggingConfig`` keeps its parsed values on the class, therefore a
+        fallback has to undo the whole previous load and not just the extension
+        switches.  Otherwise a ``LoggingConfig()`` created after a successful
+        load - and the ``init_loggers()`` call that follows - would still log to
+        the old directory, with the old level, rotation, retention, compression
+        and Aliyun SLS credentials instead of the documented defaults.
+        """
+        for name, value in cls._CLASS_DEFAULTS.items():
+            setattr(cls, name, value)
+        cls._disable_extend_modules()
+
     @classmethod
     def _disable_extend_modules(cls):
         """Disable every optional log extension module.
@@ -154,6 +192,14 @@ class LoggingConfig(object):
             return self.__config[section][key]
         except (KeyError, TypeError):
             return default_value
+
+
+# Snapshot the documented defaults declared in the class body.  Keeping a
+# single source of truth means a default can only ever be changed in one place.
+LoggingConfig._CLASS_DEFAULTS = {
+    name: getattr(LoggingConfig, name)
+    for name in LoggingConfig._MUTABLE_SETTING_NAMES
+}
 
 
 def init_log_config(config_path: Optional[str] = None):

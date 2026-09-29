@@ -58,9 +58,13 @@ from agentuniverse.base.util.logging.logging_util import init_loggers
 init_loggers()
 ```
 
-In this case every optional extension module, for example the Aliyun SLS sink,
-stays disabled, so only the built-in standard and error file handlers plus the
-stdout handler are registered. The same behaviour applies when calling
+In this case the whole configuration is reset to the defaults documented above.
+Every optional extension module, for example the Aliyun SLS sink, stays
+disabled, and `log_path`, `log_level`, `log_rotation`, `log_retention`,
+`log_compression` plus the Aliyun SLS credentials all fall back to their default
+values rather than reusing whatever an earlier configuration file loaded in the
+same process had set. Only the built-in standard and error file handlers plus
+the stdout handler are registered. The same behaviour applies when calling
 `init_log_config()` or constructing `LoggingConfig()` directly without a path,
 or when the configured file cannot be found or parsed.
 
